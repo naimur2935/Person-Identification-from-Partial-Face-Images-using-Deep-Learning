@@ -1,0 +1,17 @@
+# Python
+venv/
+venv311/
+__pycache__/
+*.pyc
+
+# Data / ML
+*.npy
+data/
+dataset/
+
+# Archives
+*.zip
+
+# System
+.DS_Store
+.env
