@@ -5,6 +5,7 @@ import numpy as np
 from torchvision import transforms
 from facenet_pytorch import InceptionResnetV1, MTCNN
 from PIL import Image
+from tqdm import tqdm
 
 full_dir = "data/celeba/full/"
 output_file = "embeddings_db_detailed.npy"
@@ -122,7 +123,7 @@ def augment_variants(face_rgb):
 
 db = {}
 failed = 0
-for i, fname in enumerate(sorted(os.listdir(full_dir))):
+for fname in tqdm(sorted(os.listdir(full_dir)), desc="Generating embeddings"):
     img_path = os.path.join(full_dir, fname)
     img = cv2.imread(img_path)
     if img is None:

@@ -6,6 +6,7 @@ import numpy as np
 from torchvision import transforms
 from facenet_pytorch import InceptionResnetV1
 from models.unet import UNet
+from tqdm import tqdm
 
 """Identification script
 
@@ -316,12 +317,16 @@ def main(argv=None):
     masked_img = cv2.cvtColor(masked_img, cv2.COLOR_BGR2RGB)
 
     # compute reconstruction and embedding on requested device
+    print("Computing face reconstruction and embedding...")
     emb_recon, (recon_resized, masked_img) = compute_recon_embedding(masked_file, device=args.device)
+    print("Reconstruction and embedding computed.")
 
     # -------------------------------
     # Load detailed embedding database
     # -------------------------------
+    print("Loading embedding database...")
     db = np.load("embeddings_db_detailed.npy", allow_pickle=True).item()
+    print(f"Database loaded with {len(db)} entries.")
 
     # -------------------------------
     # Compute scores (optionally use Faiss index to shortlist candidates)
@@ -340,7 +345,8 @@ def main(argv=None):
                 D, I = index.search(q, args.knn)
                 cand_idxs = [int(i) for i in I[0] if i >= 0]
                 cand_names = [names[i] for i in cand_idxs]
-                for fname in cand_names:
+                print(f"Retrieved {len(cand_names)} candidates from Faiss index, rescoring...")
+                for fname in tqdm(cand_names, desc="Rescoring candidates"):
                     entry = db.get(fname, {})
                     score = match_score(entry, emb_recon, method=method)
                     scores.append((fname, float(score)))
@@ -351,7 +357,8 @@ def main(argv=None):
 
     # fallback to full scan if index not used or returned no candidates
     if not scores:
-        for fname, entry in db.items():
+        print(f"Computing similarity scores against {len(db)} database entries...")
+        for fname, entry in tqdm(db.items(), desc="Matching"):
             score = match_score(entry, emb_recon, method=method)
             scores.append((fname, float(score)))
 
@@ -409,7 +416,8 @@ def main(argv=None):
 
     match_panels = []
     metadata = {'query': masked_file, 'method': method, 'top_k': top_k, 'matches': []}
-    for fname, score in topk:
+    print(f"Preparing visualization for top-{top_k} matches...")
+    for fname, score in tqdm(topk, desc="Processing matches"):
         entry = db.get(fname, {})
         img_path = entry.get('file', "data/celeba/full/" + fname)
         img = cv2.imread(img_path)
@@ -499,7 +507,9 @@ def main(argv=None):
 
     # Save and display (no terminal text output)
     out_path = f"result_{masked_file}.png"
+    print(f"Saving result image to {out_path}...")
     cv2.imwrite(out_path, cv2.cvtColor(canvas, cv2.COLOR_RGB2BGR))
+    print("Result saved successfully.")
 
     if not args.no_show:
         plt.figure(figsize=(12, 6))
